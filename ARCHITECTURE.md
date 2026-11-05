@@ -197,12 +197,6 @@ What I learned
 
 ## 9. What I would do differently with more time
 
-- **Auth and real security.** Supabase Auth, per-user RLS, a server-only service key (no open anon policies), rate limiting on `/api/rag/ask` to protect the Gemini quota.
-- **Better evaluation.** A larger, adversarial set (near-duplicate documents, multi-document questions, ambiguous questions), LLM-as-judge or human grading for answer faithfulness, and tracking recall/precision of citations, not just document hit rate. Run it in CI.
-- **Retrieval quality.** A cross-encoder / LLM reranker on the top 20, section-aware (heading-tree) chunking and table extraction (many tax answers live in tables that plain text extraction mangles), query rewriting for follow-up questions, and conversation memory in the chat.
-- **Ingestion.** Background job with progress and re-ingest on document change (content hash), OCR for scanned PDFs, versioning of rulings (which ruling version applies on which date), and an admin UI to upload documents.
 - **Answer UX.** Stream tokens, highlight the cited passage in a PDF viewer at the right page, "was this helpful" feedback stored for tuning.
 - **CRM depth.** Pagination and server-side sorting, activity editing, a dedicated activity page, optimistic-concurrency on Kanban moves, tests (unit tests for controllers, Playwright for the Kanban and chat flows), and generated Supabase types instead of hand-maintained ones.
-- **Ops.** Observability for LLM calls (latency, tokens, refusal rate), prompt versioning, secrets in a vault, and a CI pipeline running lint, typecheck, build and the retrieval eval.
-- **Assistant hardening.** A proper red-team suite for the chatbot (automated jailbreak corpus in CI), a shared rate limiter (Redis/Upstash), audit logging of committed proposals, update/merge flows ("change Daniel's stage to Won") with explicit diff confirmation, and browser-level tests for the widget's animation, focus handling and mobile layout (not yet exercised visually).
-- **History at scale.** Full-text/semantic search over chats (currently ILIKE), pagination, export, and per-user ownership once auth exists.
+- **Paid/Local LLM.** Since right now I am using Gemini AI API key, which based on my past experience it will have either latency, RPM limit on free API, and also high fail rates. Therefore, a paid/local LLM will be preferred for the production use case.
