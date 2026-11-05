@@ -4,7 +4,7 @@
 
 A single Next.js (App Router, TypeScript) application serves both the UI and the backend API, organised as **MVC**. Supabase (Postgres + pgvector) is the only datastore. Google Gemini provides both the embedding model and the answer-generation LLM.
 
-### Component diagram - In Mermaid Code
+### Component diagram
 
 ```mermaid
 flowchart LR
@@ -60,10 +60,6 @@ flowchart LR
   ING -- "insert chunks" --> VEC
 
 ```
-
-### Component diagram
-
-![alt text](<Companent Diagram.drawio.png>)
 
 ### MVC mapping
 
