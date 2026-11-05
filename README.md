@@ -13,7 +13,8 @@ A small CRM (contacts, opportunities, activity log, dashboard) built with **Next
 | Opportunities | Linked to a contact. Title, Value (RM), Stage (New → Contacted → Qualified → Proposal → Won / Lost). Kanban board with drag-and-drop (plus a stage dropdown fallback) and per-column RM totals. |
 | Activity log | Call / Email / Meeting / Note with date and description, logged against a contact or opportunity (on the contact page). |
 | Dashboard | Total contacts, open opportunities, open pipeline value (RM), won value, recent activity feed. |
-| **Tax Q&A (RAG)** | Chat at `/tax-qa`; also embedded in each contact page (**"Ask a tax question about this client"**). Answers carry citations (document, page, section, link). Refuses when the answer is not in the knowledge base. |
+| **Tax Q&A (RAG)** | Chat at `/tax-qa`; also embedded in each contact page (**"Ask a tax question about this client"**). Answers carry citations (document, page, section, link). Refuses when the answer is not in the knowledge base. **Chat history**: every conversation is saved, searchable, renameable and reopenable; follow-up questions use the previous turns. |
+| **YYC Assistant (chatbot)** | Floating chat widget at the bottom-right of every page. Describe a contact or deal in plain language and it fills the form for you, asks for whatever is missing, shows a confirmation card, and saves only after you click **Confirm**. Guarded against prompt injection and off-topic requests. |
 
 ## Prerequisites
 
@@ -31,8 +32,8 @@ npm install
 cp .env.sample .env        # then fill in the values (see table below)
 
 # 3. create the database schema (pick ONE)
-#    a) Supabase SQL editor: paste and run supabase/migrations/0001_init.sql
-#    b) Supabase MCP / CLI:  apply supabase/migrations/0001_init.sql
+#    a) Supabase SQL editor: run supabase/migrations/0001_init.sql, then 0002_chat_sessions.sql
+#    b) Supabase MCP / CLI:  apply both migration files in order
 #    (optional demo data)    run supabase/seed.sql the same way
 
 # 4. ingest the tax documents into the vector DB (one-off, a few minutes)
@@ -77,7 +78,7 @@ curl -X POST http://localhost:3000/api/rag/ask -H "content-type: application/jso
   -d '{"question":"By when must SST-02 be furnished?", "contact_id":"<optional CRM contact uuid>"}'
 ```
 
-Other endpoints: `GET /api/rag/documents`, `GET /api/rag/history?contact_id=`.
+Other endpoints: `GET /api/rag/documents`, `GET /api/rag/history?contact_id=`, and the chat-history API: `GET /api/rag/sessions?q=&contact_id=` (list / search), `GET|PATCH|DELETE /api/rag/sessions/:id`. Pass `session_id` to `/api/rag/ask` to continue a conversation.
 
 **Evaluation** — 10 in-scope + 2 out-of-scope questions in [`data/eval-questions.json`](data/eval-questions.json):
 
@@ -86,13 +87,15 @@ npm run eval                  # retrieval + answers; writes data/eval-results.{j
 npm run eval -- --no-answer   # retrieval metrics only (no LLM calls)
 ```
 
-Results and lessons are in [ARCHITECTURE.md](ARCHITECTURE.md#7-evaluation-results).
+Results and lessons are in [ARCHITECTURE.md](ARCHITECTURE.md#8-evaluation-results).
 
 ### Optional / bonus features and how to trigger them
 
 - **Hybrid retrieval** (vector + keyword, Reciprocal Rank Fusion) — always on; implemented in the SQL function `match_tax_chunks`.
 - **Metadata filter** — choose a category (e-Invoice / SST / Public Ruling) in the Tax Assistant dropdown, or send `"category"` in the API body.
 - **CRM link** — open a contact → *Ask a tax question about this client*, or pick a client in `/tax-qa`. The client's company, status and open deals are added to the prompt (for tailoring only, never cited) and the Q&A is saved to `rag_queries` against that contact.
+- **Chat history** — open `/tax-qa`: the left panel lists past chats grouped by date (Today / Yesterday / Previous 7 days / Older). Type in its search box to search titles and message text, click a chat to reopen and continue it, or rename/delete it. On a contact page, use the *Chat* dropdown to continue that client's chats.
+- **YYC Assistant chatbot** — click the round button at the bottom-right of any page. Try: *"Add a new contact"* (it will guide you), *"Add Siti Aminah from Kopi Timur Sdn Bhd, siti@kopitimur.my, she's a prospect"*, or *"Create an opportunity 'POS rollout' worth RM 50k for Daniel Lim"*. Review the confirmation card, then **Confirm** to save. Details of the safeguards: [ARCHITECTURE.md §4](ARCHITECTURE.md#4-yyc-assistant-chatbot-form-filling-automation).
 - **Model fallback** — set `GEMINI_CHAT_FALLBACK_MODEL`; used automatically after retries on 429/503.
 
 ## Project structure (MVC)
@@ -100,10 +103,11 @@ Results and lessons are in [ARCHITECTURE.md](ARCHITECTURE.md#7-evaluation-result
 ```
 src/
   app/                 View: pages (dashboard, contacts, opportunities, tax-qa) + thin API route handlers (app/api/**)
-  components/          View: UI components (Kanban, TaxChat, forms, ...)
+  components/          View: UI components (Kanban, TaxChat, ChatHistory, chatbot/, forms, ...)
   controllers/         Controller: validation (zod) + business logic
   models/              Model: all Supabase data access
   services/rag/        AI integration: parser, chunker, embedder, ingest, retriever, prompts, answerer
+  services/assistant/  YYC Assistant chatbot: guard (injection defences), prompts, schema, extractor, orchestration
   lib/                 env, Supabase/Gemini clients, HTTP helpers, typed fetch client
   types/               Shared types / enums
 scripts/               ingest.ts, eval.ts

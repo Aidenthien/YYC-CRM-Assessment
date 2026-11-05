@@ -25,9 +25,17 @@ export function formatContext(chunks: RetrievedChunk[]): string {
     .join("\n\n---\n\n");
 }
 
-export function buildUserPrompt(question: string, chunks: RetrievedChunk[], clientContext?: string | null): string {
+export interface ChatTurn { question: string; answer: string }
+
+export function buildUserPrompt(question: string, chunks: RetrievedChunk[], clientContext?: string | null, history: ChatTurn[] = []): string {
+  const convo = history.length
+    ? `Earlier in this conversation (ONLY to resolve what the new question refers to; NOT a source of facts and must not be cited):\n${history
+        .map((t) => `Q: ${t.question}\nA: ${t.answer.slice(0, 600)}`)
+        .join("\n\n")}\n`
+    : "";
   return [
     clientContext ? `Client context (for tailoring only):\n${clientContext}\n` : "",
+    convo,
     `Context passages:\n\n${formatContext(chunks)}`,
     `\nQuestion: ${question}`,
   ].filter(Boolean).join("\n");

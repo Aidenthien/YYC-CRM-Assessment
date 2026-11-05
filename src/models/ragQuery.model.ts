@@ -8,11 +8,23 @@ export interface RagQueryRow {
   answer: string;
   citations: Citation[];
   answerable: boolean;
+  session_id?: string | null;
   created_at: string;
 }
 
 export const RagQueryModel = {
-  async insert(r: { contact_id: string | null; question: string; answer: string; citations: Citation[]; answerable: boolean }): Promise<string> {
+  async bySession(sessionId: string, opts: { last?: number } = {}): Promise<RagQueryRow[]> {
+    if (opts.last) {
+      const { data, error } = await db().from("rag_queries").select("*").eq("session_id", sessionId).order("created_at", { ascending: false }).limit(opts.last);
+      if (error) throw error;
+      return ((data ?? []) as RagQueryRow[]).reverse();
+    }
+    const { data, error } = await db().from("rag_queries").select("*").eq("session_id", sessionId).order("created_at", { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as RagQueryRow[];
+  },
+
+  async insert(r: { contact_id: string | null; question: string; answer: string; citations: Citation[]; answerable: boolean; session_id?: string }): Promise<string> {
     const { data, error } = await db().from("rag_queries").insert(r).select("id").single();
     if (error) throw error;
     return data.id as string;

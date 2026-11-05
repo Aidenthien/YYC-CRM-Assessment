@@ -69,9 +69,39 @@ export interface RagAnswer {
   citations: Citation[];
   retrieved: { chunk_id: string; document_name: string; page_start: number | null; similarity: number; rrf_score: number }[];
   query_id?: string;
+  session_id?: string;
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  contact_id: string | null;
+  contact_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatSessionSummary extends ChatSession {
+  message_count: number;
+  last_question: string | null;
+  match_snippet: string | null; // set when a search matched message text rather than the title
+}
+
+export interface ChatMessageRecord {
+  id: string;
+  question: string;
+  answer: string;
+  answerable: boolean;
+  citations: Citation[];
+  created_at: string;
+}
+
+export interface ChatSessionDetail extends ChatSession {
+  messages: ChatMessageRecord[];
 }
 
 export interface RagAskRequest {
+  session_id?: string; // continue an existing chat; omitted => a new session is created
   question: string;
   contact_id?: string; // links the question to a CRM contact and adds client context to the prompt
   category?: string; // optional metadata filter

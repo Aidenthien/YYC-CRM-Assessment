@@ -108,18 +108,47 @@ interface Message {
   error?: string;
 }
 
-export default function TaxChat({ contactId, category, contactLabel, onAnswered, className = "" }: {
+export default function TaxChat({ contactId, category, contactLabel, sessionId, onSessionChange, onAnswered, className = "" }: {
   contactId?: string;
   category?: string;
   contactLabel?: string;
+  /** Reopen this saved chat on mount (remount with a new key to switch chats). */
+  sessionId?: string | null;
+  /** Called with the session id once the first answer creates a new session. */
+  onSessionChange?: (id: string) => void;
   onAnswered?: () => void;
   className?: string;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [seq, setSeq] = useState(1);
+  const [sid, setSid] = useState<string | null>(sessionId ?? null);
+  const [loadingChat, setLoadingChat] = useState(!!sessionId);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
-  const busy = messages.some((m) => m.status === "loading");
+  const busy = loadingChat || messages.some((m) => m.status === "loading");
+
+  const initialSession = useRef(sessionId); // only load on mount; later prop changes come from our own onSessionChange
+  useEffect(() => {
+    const sessionId = initialSession.current;
+    if (!sessionId) return;
+    let cancelled = false;
+    api
+      .chatSession(sessionId)
+      .then((d) => {
+        if (cancelled) return;
+        setMessages(d.messages.map((m, i) => ({ id: -(i + 1), question: m.question, status: "done" as const, answer: m.answer, answerable: m.answerable, citations: m.citations })));
+        setLoadingChat(false);
+      })
+      .catch((e: Error) => {
+        if (cancelled) return;
+        setLoadError(e.message);
+        setLoadingChat(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -133,7 +162,11 @@ export default function TaxChat({ contactId, category, contactLabel, onAnswered,
     setInput("");
     setMessages((m) => [...m, { id, question, status: "loading" }]);
     try {
-      const r = await api.ask({ question, contact_id: contactId, category: category || undefined });
+      const r = await api.ask({ question, contact_id: contactId, category: category || undefined, session_id: sid ?? undefined });
+      if (r.session_id && r.session_id !== sid) {
+        setSid(r.session_id);
+        onSessionChange?.(r.session_id);
+      }
       setMessages((m) =>
         m.map((x) => (x.id === id ? { ...x, status: "done", answer: r.answer, answerable: r.answerable, citations: r.citations } : x)),
       );
@@ -151,7 +184,9 @@ export default function TaxChat({ contactId, category, contactLabel, onAnswered,
   return (
     <div className={`flex min-h-0 flex-col ${className}`}>
       <div className="flex-1 space-y-4 overflow-y-auto p-4" aria-live="polite">
-        {messages.length === 0 && (
+        {loadingChat && <div className="flex justify-center py-6"><Spinner /></div>}
+        {loadError && <ErrorBanner message={loadError} />}
+        {messages.length === 0 && !loadingChat && !loadError && (
           <div className="py-6 text-center">
             <p className="text-sm text-zinc-500">
               {contactLabel ? `Ask a tax question about ${contactLabel}.` : "Ask a question about Malaysian tax."} Answers are grounded in the knowledge base with citations.

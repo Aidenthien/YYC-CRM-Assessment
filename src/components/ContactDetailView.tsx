@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { api, type ContactDetail, type RagHistoryItem } from "@/lib/api";
-import type { Opportunity } from "@/types";
+import type { ChatSessionSummary, Opportunity } from "@/types";
 import { useApi } from "./useApi";
 import { formatDate, formatRM, relativeTime } from "./format";
 import { ContactFormModal, LogActivityForm, OpportunityFormModal } from "./forms";
@@ -13,6 +13,9 @@ import { ActivityIcon, EmptyState, ErrorBanner, LoadingBlock, StageBadge, Status
 export default function ContactDetailView({ id }: { id: string }) {
   const { data: c, error, loading, reload } = useApi<ContactDetail>(`/api/contacts/${id}`);
   const history = useApi<RagHistoryItem[]>(`/api/rag/history?contact_id=${encodeURIComponent(id)}&limit=20`);
+  const sessions = useApi<ChatSessionSummary[]>(`/api/rag/sessions?contact_id=${encodeURIComponent(id)}&limit=50`);
+  const [chatSid, setChatSid] = useState(""); // "" => new chat
+  const [chatKey, setChatKey] = useState(0);
   const [editContact, setEditContact] = useState(false);
   const [oppModal, setOppModal] = useState<Opportunity | "new" | null>(null);
   const [actError, setActError] = useState<string | null>(null);
@@ -117,7 +120,29 @@ export default function ContactDetailView({ id }: { id: string }) {
               <h2 className="text-base font-semibold">Ask a tax question about this client</h2>
               <p className="text-xs text-zinc-500">Answers use {c.name}&apos;s CRM context and are saved to their history.</p>
             </div>
-            <TaxChat className="flex-1" contactId={c.id} contactLabel={c.name} onAnswered={history.reload} />
+            <div className="flex items-center gap-2 border-b border-zinc-200 px-5 py-2 dark:border-zinc-800">
+              <label htmlFor="contact-chat" className="shrink-0 text-xs font-medium text-zinc-500">Chat</label>
+              <select
+                id="contact-chat"
+                className="input !py-1 text-sm"
+                value={chatSid}
+                onChange={(e) => { setChatSid(e.target.value); setChatKey((k) => k + 1); }}
+              >
+                <option value="">New chat</option>
+                {(sessions.data ?? []).map((s) => (
+                  <option key={s.id} value={s.id}>{s.title} ({s.message_count})</option>
+                ))}
+              </select>
+            </div>
+            <TaxChat
+              key={chatKey}
+              className="flex-1"
+              contactId={c.id}
+              contactLabel={c.name}
+              sessionId={chatSid || null}
+              onSessionChange={setChatSid}
+              onAnswered={() => { history.reload(); sessions.reload(); }}
+            />
           </section>
 
           <section className="card">

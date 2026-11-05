@@ -1,6 +1,8 @@
 import type {
   Activity,
   ActivityType,
+  ChatSessionDetail,
+  ChatSessionSummary,
   Citation,
   Contact,
   ContactStatus,
@@ -101,8 +103,14 @@ export const api = {
   createActivity: (b: ActivityInput) => request<Activity>("/api/activities", json("POST", b)),
   deleteActivity: (id: string) => request<unknown>(`/api/activities/${id}`, json("DELETE")),
 
-  ask: (b: { question: string; contact_id?: string; category?: string }) =>
+  ask: (b: { question: string; contact_id?: string; category?: string; session_id?: string }) =>
     request<RagAnswer>("/api/rag/ask", json("POST", b)),
+  chatSessions: (p: { q?: string; contact_id?: string; limit?: number } = {}) =>
+    request<ChatSessionSummary[]>(`/api/rag/sessions${qs(p)}`),
+  chatSession: (id: string) => request<ChatSessionDetail>(`/api/rag/sessions/${id}`),
+  renameChatSession: (id: string, title: string) =>
+    request<ChatSessionDetail>(`/api/rag/sessions/${id}`, json("PATCH", { title })),
+  deleteChatSession: (id: string) => request<unknown>(`/api/rag/sessions/${id}`, json("DELETE")),
   ragHistory: (p: { contact_id?: string; limit?: number } = {}) =>
     request<RagHistoryItem[]>(`/api/rag/history${qs(p)}`),
   ragDocuments: () => request<TaxDocument[]>("/api/rag/documents"),

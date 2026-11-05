@@ -3,7 +3,7 @@ import { z } from "zod";
 import { gemini, withRetry, geminiStatus } from "@/lib/gemini";
 import { env } from "@/lib/env";
 import { HttpError } from "@/lib/http";
-import { SYSTEM_PROMPT, NOT_FOUND_ANSWER, buildUserPrompt } from "./prompts";
+import { SYSTEM_PROMPT, NOT_FOUND_ANSWER, buildUserPrompt, type ChatTurn } from "./prompts";
 import type { Citation } from "@/types";
 import type { RetrievedChunk } from "./types";
 
@@ -43,7 +43,7 @@ function toCitation(n: number, c: RetrievedChunk): Citation {
 }
 
 /** Generate a grounded answer from retrieved chunks. Skips the LLM entirely when there is no context. */
-export async function answer(question: string, chunks: RetrievedChunk[], clientContext?: string | null): Promise<AnswerResult> {
+export async function answer(question: string, chunks: RetrievedChunk[], clientContext?: string | null, history: ChatTurn[] = []): Promise<AnswerResult> {
   if (!chunks.length) return refusal(); // code-level guard: nothing retrieved => never ask the model
 
   let text: string | undefined;
@@ -53,7 +53,7 @@ export async function answer(question: string, chunks: RetrievedChunk[], clientC
         () =>
           gemini().models.generateContent({
             model,
-            contents: buildUserPrompt(question, chunks, clientContext),
+            contents: buildUserPrompt(question, chunks, clientContext, history),
             config: {
               systemInstruction: SYSTEM_PROMPT,
               temperature: 0.1,

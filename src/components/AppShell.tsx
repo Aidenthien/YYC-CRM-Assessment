@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useState, type ReactNode } from "react";
+import Chatbot from "./chatbot/Chatbot";
 
 const NAV = [
   { href: "/", label: "Dashboard", icon: "M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10" },
@@ -69,6 +70,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         )}
         <main className="mx-auto w-full max-w-6xl flex-1 p-4 sm:p-6">{children}</main>
       </div>
+      <Chatbot />
     </div>
   );
 }
