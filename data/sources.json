@@ -1,0 +1,11 @@
+[
+  { "name": "LHDN e-Invoice Guideline", "category": "e-Invoice", "url": "https://www.hasil.gov.my/wp-content/uploads/IRBM-e-Invoice-Guideline.pdf" },
+  { "name": "LHDN e-Invoice Specific Guideline", "category": "e-Invoice", "url": "https://www.hasil.gov.my/wp-content/uploads/irbm-e-invoice-specific-guideline.pdf" },
+  { "name": "RMCD Service Tax Guide on Management Services", "category": "SST", "url": "https://pub-359af8e1f79c472292a7e44ec60f3027.r2.dev/Industry%20Guides/EN/Guide%20on%20Management%20Services%20%20V5%206.5.2026.pdf" },
+  { "name": "RMCD Sales Tax & Service Tax Guide on Return and Payment", "category": "SST", "url": "https://pub-359af8e1f79c472292a7e44ec60f3027.r2.dev/Specific%20Guides/EN/Sales%20Tax_Service%20Tax_Guide%20on%20Return%20and%20Payment%20V3.pdf" },
+  { "name": "RMCD Service Tax Guide on Professional Services", "category": "SST", "url": "https://pub-359af8e1f79c472292a7e44ec60f3027.r2.dev/Industry%20Guides/EN/Guide%20on%20Professional%20Services%2020210921.pdf" },
+  { "name": "RMCD Service Tax Guide on Rental or Leasing Services", "category": "SST", "url": "https://pub-359af8e1f79c472292a7e44ec60f3027.r2.dev/Industry%20Guides/EN/5.%20GUIDE%20ON%20RENTAL%20OR%20LEASING%20SERVICES.pdf" },
+  { "name": "LHDN Public Ruling 7/2025 (Resident Individual: Gifts or Contributions and Allowable Deductions)", "category": "Public Ruling", "url": "https://www.hasil.gov.my/wp-content/uploads/pr-7-2025.pdf" },
+  { "name": "LHDN Public Ruling 11/2017 (Residence Status of Individuals)", "category": "Public Ruling", "url": "https://www.hasil.gov.my/wp-content/uploads/PR_11_2017.pdf" },
+  { "name": "LHDN Public Ruling 9/2019 (Residence Status of Companies and Bodies of Persons)", "category": "Public Ruling", "url": "https://www.hasil.gov.my/wp-content/uploads/PR_09_2019.pdf" }
+]

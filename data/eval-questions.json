@@ -1,0 +1,86 @@
+[
+  {
+    "id": "q1",
+    "question": "From which date must taxpayers with annual turnover of more than RM25 million and up to RM100 million issue e-Invoices?",
+    "expected_source": "LHDN e-Invoice Guideline",
+    "expected_page": 12,
+    "expected_answer_contains": "1 January 2025"
+  },
+  {
+    "id": "q2",
+    "question": "How many hours does a buyer have to request rejection of a validated e-Invoice that contains errors?",
+    "expected_source": "LHDN e-Invoice Guideline",
+    "expected_page": 25,
+    "expected_answer_contains": "72"
+  },
+  {
+    "id": "q3",
+    "question": "What is the threshold value for mandatory service tax registration for rental or leasing services?",
+    "expected_source": "RMCD Service Tax Guide on Rental or Leasing Services",
+    "expected_page": 9,
+    "expected_answer_contains": "500,000"
+  },
+  {
+    "id": "q4",
+    "question": "What is the maximum fine for a registered person who furnishes an incorrect Service Tax return?",
+    "expected_source": "RMCD Sales Tax & Service Tax Guide on Return and Payment",
+    "expected_page": 9,
+    "expected_answer_contains": "50,000"
+  },
+  {
+    "id": "q5",
+    "question": "By when must a taxable person furnish the SST-02 return?",
+    "expected_source": "RMCD Sales Tax & Service Tax Guide on Return and Payment",
+    "expected_page": 5,
+    "expected_answer_contains": "last day of the month"
+  },
+  {
+    "id": "q6",
+    "question": "What is the service tax rate on management services and when did it take effect?",
+    "expected_source": "RMCD Service Tax Guide on Management Services",
+    "expected_page": 5,
+    "expected_answer_contains": "8%"
+  },
+  {
+    "id": "q7",
+    "question": "How many days must an individual be physically present in Malaysia in a basis year to be a tax resident under the 182-day rule?",
+    "expected_source": "LHDN Public Ruling 11/2017 (Residence Status of Individuals)",
+    "expected_page": 7,
+    "expected_answer_contains": "182"
+  },
+  {
+    "id": "q8",
+    "question": "What is the deduction limit for a gift of money made by an individual to an approved institution, organization or fund?",
+    "expected_source": "LHDN Public Ruling 7/2025 (Resident Individual: Gifts or Contributions and Allowable Deductions)",
+    "expected_page": 6,
+    "expected_answer_contains": "10%"
+  },
+  {
+    "id": "q9",
+    "question": "Which professional services are listed under Group G of the First Schedule of the Service Tax Regulations 2018?",
+    "expected_source": "RMCD Service Tax Guide on Professional Services",
+    "expected_page": 4,
+    "expected_answer_contains": "Legal services"
+  },
+  {
+    "id": "q10",
+    "question": "Which currency exchange rate should a supplier use in an e-Invoice for a foreign currency transaction when no legal or tax requirement applies?",
+    "expected_source": "LHDN e-Invoice Specific Guideline",
+    "expected_page": 105,
+    "expected_answer_contains": "internal policy"
+  },
+  {
+    "id": "q11-oos",
+    "question": "What is the corporate income tax rate in Singapore for 2025?",
+    "expected_source": null,
+    "expected_page": null,
+    "expected_answer_contains": null
+  },
+  {
+    "id": "q12-oos",
+    "question": "What is the best recipe for making sourdough bread at home?",
+    "expected_source": null,
+    "expected_page": null,
+    "expected_answer_contains": null
+  }
+]
