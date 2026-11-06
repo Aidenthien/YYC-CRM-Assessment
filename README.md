@@ -14,7 +14,7 @@ A small CRM (contacts, opportunities, activity log, dashboard) built with **Next
 | Activity log | Call / Email / Meeting / Note with date and description, logged against a contact or opportunity (on the contact page). |
 | Dashboard | Total contacts, open opportunities, open pipeline value (RM), won value, recent activity feed. |
 | **Tax Q&A (RAG)** | Chat at `/tax-qa`; also embedded in each contact page (**"Ask a tax question about this client"**). Answers carry citations (document, page, section, link). Refuses when the answer is not in the knowledge base. **Chat history**: every conversation is saved, searchable, renameable and reopenable; follow-up questions use the previous turns. |
-| **YYC Assistant (chatbot)** | Floating chat widget at the bottom-right of every page. Describe a contact or deal in plain language and it fills the form for you, asks for whatever is missing, shows a confirmation card, and saves only after you click **Confirm**. Guarded against prompt injection and off-topic requests. |
+| **YYC Assistant (chatbot)** | Floating chat widget at the bottom-right of every page. Describe a contact or deal in plain language and it fills the form for you, asks for whatever is missing, shows a confirmation card, and saves only after you click **Confirm**. Also a **CRM Copilot**: ask questions about your CRM data in plain English and get an answer grounded in the matching records. A small router LLM decides per message whether it is automation or a question. Guarded against prompt injection and off-topic requests. |
 
 ## Prerequisites
 
@@ -53,6 +53,7 @@ npm run dev                # http://localhost:3000
 | `SUPABASE_PASSWORD` | DB password (only for direct `psql` access; the app does not use it) |
 | `GEMINI_API_KEY` | Gemini key for embeddings and answer generation (**secret**) |
 | `GEMINI_CHAT_MODEL` / `GEMINI_CHAT_FALLBACK_MODEL` | Answer-generation model and one-shot fallback if it is overloaded |
+| `GEMINI_ROUTER_MODEL` | Smaller, faster model used by the chatbot to decide automation vs. data question (default `gemini-3.1-flash-lite`) |
 | `GEMINI_EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS` | `gemini-embedding-001`, 768 dims (must match the `vector(768)` column) |
 | `RAG_TOP_K`, `RAG_MIN_SIMILARITY` | Retrieval size (default 6) and similarity floor (default 0.45) |
 
@@ -95,7 +96,8 @@ Results and lessons are in [ARCHITECTURE.md](ARCHITECTURE.md#8-evaluation-result
 - **Metadata filter** — choose a category (e-Invoice / SST / Public Ruling) in the Tax Assistant dropdown, or send `"category"` in the API body.
 - **CRM link** — open a contact → *Ask a tax question about this client*, or pick a client in `/tax-qa`. The client's company, status and open deals are added to the prompt (for tailoring only, never cited) and the Q&A is saved to `rag_queries` against that contact.
 - **Chat history** — open `/tax-qa`: the left panel lists past chats grouped by date (Today / Yesterday / Previous 7 days / Older). Type in its search box to search titles and message text, click a chat to reopen and continue it, or rename/delete it. On a contact page, use the *Chat* dropdown to continue that client's chats.
-- **YYC Assistant chatbot** — click the round button at the bottom-right of any page. Try: *"Add a new contact"* (it will guide you), *"Add Siti Aminah from Kopi Timur Sdn Bhd, siti@kopitimur.my, she's a prospect"*, or *"Create an opportunity 'POS rollout' worth RM 50k for Daniel Lim"*. Review the confirmation card, then **Confirm** to save. Details of the safeguards: [ARCHITECTURE.md §4](ARCHITECTURE.md#4-yyc-assistant-chatbot-form-filling-automation).
+- **YYC Assistant chatbot** — click the round button at the bottom-right of any page. Try: *"Add a new contact"* (it will guide you), *"Add Siti Aminah from Kopi Timur Sdn Bhd, siti@kopitimur.my, she's a prospect"*, or *"Create an opportunity 'POS rollout' worth RM 50k for Daniel Lim"*. Review the confirmation card, then **Confirm** to save.
+- **CRM Copilot** — same chatbot, just ask a question: *"Which prospects haven't been contacted in 2 weeks?"*, *"Summarise all opportunities above RM 10,000 in the Proposal stage"*, *"How many contacts do I have by status?"*, *"What's the total value of open opportunities?"*, *"Show Sarah Wong's activities"*. The badge on each reply shows which route was taken (Copilot or Automation). The Copilot is read-only; tax questions are redirected to the Tax Assistant. Details of the safeguards: [ARCHITECTURE.md §4](ARCHITECTURE.md#4-yyc-assistant-chatbot-router-form-filling-automation-and-crm-copilot).
 - **Model fallback** — set `GEMINI_CHAT_FALLBACK_MODEL`; used automatically after retries on 429/503.
 
 ## Project structure (MVC)
@@ -107,7 +109,8 @@ src/
   controllers/         Controller: validation (zod) + business logic
   models/              Model: all Supabase data access
   services/rag/        AI integration: parser, chunker, embedder, ingest, retriever, prompts, answerer
-  services/assistant/  YYC Assistant chatbot: guard (injection defences), prompts, schema, extractor, orchestration
+  services/assistant/  YYC Assistant chatbot: guard (injection defences), router, prompts, schema, extractor, orchestration
+  services/assistant/copilot/  CRM Copilot: planner, read-only executor, answerer
   lib/                 env, Supabase/Gemini clients, HTTP helpers, typed fetch client
   types/               Shared types / enums
 scripts/               ingest.ts, eval.ts

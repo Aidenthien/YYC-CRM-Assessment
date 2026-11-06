@@ -7,6 +7,7 @@
 | **Claude Code** (Anthropic CLI / VS Code extension) | Planning the architecture, writing the application code, running and debugging it, and drafting these documents. |
 | **Claude Code sub-agents** | Three agents worked in parallel on separate file sets: (1) CRM backend — models, controllers, API routes; (2) RAG module — parsing, chunking, embeddings, retrieval, prompts, answerer, ingestion and evaluation scripts; (3) frontend — pages, Kanban, chat UI. |
 | **Claude Code sub-agents (round 2)** | Two more agents on separate file sets: (4) Tax Assistant chat history — sessions, search, follow-up context, history sidebar; (5) the floating YYC Assistant chatbot — guard, extractor, confirm-before-save flow, widget UI. |
+| **Claude Code sub-agents (round 3)** | (6) CRM Copilot and the small-model router: router, planner, read-only executor, answerer, widget changes, live tests. |
 | **Supabase MCP server** | Inspecting the empty project, applying the schema migrations (tables, pgvector, HNSW/GIN indexes, `match_tax_chunks` RPC, RLS, `chat_sessions`) and seeding demo data. |
 | **Gemini API** (runtime, not a dev tool) | `gemini-embedding-001` for embeddings and a Gemini chat model for answer generation inside the product. |
 
@@ -33,6 +34,9 @@
 | `gemini-2.5-flash` returned 404 for the supplied key | Live ingest/eval run; model made configurable with a fallback |
 | Chat-history agent reported success without running the app, so the search/rename/delete paths were unverified | I exercised them live (ask, follow-up, search, rename, delete, 404 after delete) |
 | Chatbot agent mirrored the contact/opportunity zod schemas instead of importing them (duplication risk) | Kept deliberately: `/commit` still re-validates through the real controllers; noted as a refactor candidate |
+| Router (small model) first labelled "write a poem", "Add Sarah Tan…" and "hmm" as injection attempts with confidence 1 | Live router tests; fixed with few-shot examples and a "rare" rule |
+| Copilot reported open pipeline RM 56,000 while the dashboard had shown RM 269,000 | I compared against SQL: three opportunities had `value_rm = 0`. Root cause was `createSchema.partial()` keeping `.default(0)` so Kanban drags reset values (a backend-agent bug). Fixed; values restored; verified by calling the controllers directly |
+| The running dev server (:3000) kept serving pre-fix code after the edit, so an HTTP re-test falsely looked unfixed | Re-tested the controllers directly with `tsx`; noted that the dev server needs a restart |
 | Chatbot UI animation, focus handling and mobile layout were never viewed in a browser by the AI | Not verified visually; listed as a gap in ARCHITECTURE.md §9 |
 
 ## Notes on use

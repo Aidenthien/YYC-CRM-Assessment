@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-import { assistantApi, DATA_CHANGED_EVENT, type ChatResponse, type ContactRef, type Proposal, type ProposalView } from "@/lib/assistantApi";
+import { assistantApi, DATA_CHANGED_EVENT, type ChatResponse, type ChatRoute, type ContactRef, type CopilotPlan, type CopilotRecord, type Proposal, type ProposalView } from "@/lib/assistantApi";
 import ProposalCard, { type ProposalState } from "./ProposalCard";
 
 interface Msg {
@@ -18,19 +18,25 @@ interface Msg {
   candidates?: ContactRef[];
   canReuse?: boolean; // duplicate found while an opportunity is pending
   error?: boolean;
+  route?: ChatRoute;
+  records?: CopilotRecord[];
+  plan?: CopilotPlan | null;
+  truncated?: boolean;
 }
 
 const WELCOME: Msg = {
   id: "welcome",
   role: "assistant",
-  content: "Hi, I'm the YYC Assistant. Tell me about a contact or an opportunity in plain words and I'll fill in the form for you. You always confirm before anything is saved.",
+  content: "Hi, I'm the YYC CRM Copilot. I can answer questions about your contacts, opportunities and activities (Copilot), or fill in a new contact or opportunity from plain words (Automation). Nothing is ever saved until you confirm.",
 };
+const RECORD_CHIPS = 8;
 const STORE_KEY = "yyc-assistant-v1";
 const CHIPS: { label: string; send?: string; fill?: string }[] = [
+  { label: "Which prospects haven't been contacted in 2 weeks?", send: "Which prospects haven't been contacted in 2 weeks?" },
+  { label: "Opportunities above RM 10,000 in Proposal", send: "Summarise opportunities above RM 10,000 in Proposal" },
+  { label: "Pipeline by stage", send: "How much is in the pipeline by stage?" },
   { label: "Add a new contact", send: "Add a new contact" },
   { label: "Create an opportunity", send: "Create an opportunity" },
-  { label: "Sarah Tan, sarah@acme.com, Acme", fill: "Add Sarah Tan, sarah@acme.com, 012-345 6789, Acme Sdn Bhd, Prospect" },
-  { label: "RM 50,000 deal for Daniel Lim", fill: 'Create an opportunity "Website redesign" worth RM 50,000 for Daniel Lim' },
 ];
 
 const KEYFRAMES = `
@@ -103,19 +109,24 @@ export default function Chatbot() {
     const content = text.trim();
     if (!content || busy) return;
     const userMsg: Msg = { id: nid(), role: "user", content };
-    // A newer turn replaces any still-pending confirmation card.
-    const next = [...base.map((m) => (m.pstate === "pending" ? { ...m, pstate: "superseded" as const } : m)), userMsg];
+    const next = [...base, userMsg];
     setMessages(next);
     setInput("");
     setBusy(true);
     try {
-      const turns = next.filter((m) => m.id !== "welcome" && !m.error).map((m) => ({ role: m.role, content: m.content }));
+      // Copilot answers can quote CRM values, so only a fixed placeholder goes back to the server as history (never CRM text).
+      const turns = next.filter((m) => m.id !== "welcome" && !m.error).map((m) => ({
+        role: m.role,
+        content: m.role === "assistant" && m.route === "copilot" ? `[Copilot answered a question about ${m.plan?.entity ?? "CRM data"}.]` : m.content,
+      }));
       const r: ChatResponse = await assistantApi.chat(turns, draft);
       setDraft(r.status === "info" && !Object.keys(r.draft ?? {}).length ? {} : r.draft ?? {});
+      // Only an automation turn replaces a still-pending confirmation card; a quick data question keeps it (and the draft) alive.
+      const replaces = !r.route || r.route === "automation";
       setMessages((ms) => [
-        ...ms,
+        ...(replaces ? ms.map((m) => (m.pstate === "pending" ? { ...m, pstate: "superseded" as const } : m)) : ms),
         {
-          id: nid(), role: "assistant", content: r.reply, link: r.link, duplicate: r.duplicate, candidates: r.candidates,
+          id: nid(), role: "assistant", content: r.reply, route: r.route, records: r.records, plan: r.plan, truncated: r.truncated, link: r.link, duplicate: r.duplicate, candidates: r.candidates,
           canReuse: r.status === "duplicate" && !!(r.draft as { wants?: { opportunity?: boolean } })?.wants?.opportunity,
           ...(r.proposal ? { proposal: r.proposal, pstate: "pending" as const } : {}),
         },
@@ -190,8 +201,8 @@ export default function Chatbot() {
         <header className="flex items-center gap-3 bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-3 text-white">
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20"><Icon d={SPARK} className="h-5 w-5" /></span>
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-semibold leading-tight">YYC Assistant</h2>
-            <p className="text-xs text-indigo-100">Add contacts &amp; opportunities by chatting</p>
+            <h2 className="text-sm font-semibold leading-tight">YYC CRM Copilot</h2>
+            <p className="text-xs text-indigo-100">Ask about your CRM or add records by chatting</p>
           </div>
           <button onClick={reset} aria-label="Reset conversation" title="Reset conversation" className="rounded-lg p-1.5 hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-white">
             <Icon d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4" className="h-5 w-5" />
@@ -215,6 +226,29 @@ export default function Chatbot() {
               >
                 {m.content}
               </div>
+              {m.role === "assistant" && !m.error && (m.route === "copilot" || m.route === "automation") && (
+                <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${m.route === "copilot" ? "bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300" : "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300"}`}>
+                  {m.route === "copilot" ? "Copilot" : "Automation"}
+                </span>
+              )}
+              {m.records && m.records.length > 0 && (
+                <ul className="mt-1.5 flex max-w-[96%] flex-wrap gap-1.5" aria-label="Records mentioned">
+                  {m.records.slice(0, RECORD_CHIPS).map((r) => (
+                    <li key={`${r.type}-${r.id}`}>
+                      <Link
+                        href={r.link}
+                        title={r.label}
+                        onClick={() => { if (window.matchMedia("(max-width: 639px)").matches) closePanel(); }}
+                        className="inline-block max-w-[16rem] truncate rounded-full border border-violet-200 bg-white px-2.5 py-1 text-xs font-medium text-violet-700 hover:bg-violet-50 dark:border-violet-900 dark:bg-zinc-900 dark:text-violet-300 dark:hover:bg-violet-950/50"
+                      >
+                        {r.label}
+                      </Link>
+                    </li>
+                  ))}
+                  {m.records.length > RECORD_CHIPS && <li className="self-center text-xs text-zinc-500">+{m.records.length - RECORD_CHIPS} more</li>}
+                </ul>
+              )}
+              {m.plan && <p className="mt-1 max-w-[96%] text-[11px] text-zinc-500 dark:text-zinc-400">Query: {m.plan.summary}{m.truncated ? " (truncated)" : ""}</p>}
               {m.link && (
                 <Link href={m.link.href} onClick={() => { if (window.matchMedia("(max-width: 639px)").matches) closePanel(); }} className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">
                   {m.link.label} <span aria-hidden="true">&rarr;</span>
@@ -255,8 +289,9 @@ export default function Chatbot() {
             </div>
           )}
           {busy && (
-            <div className="flex items-start" role="status" aria-label="Assistant is typing">
-              <div className="flex gap-1 rounded-2xl rounded-bl-md border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex items-start" role="status" aria-label="Assistant is thinking">
+              <div className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-zinc-200 bg-white px-4 py-3 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+                <span className="mr-1">Thinking</span>
                 {[0, 150, 300].map((d) => (
                   <span key={d} className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 motion-reduce:animate-pulse" style={{ animationDelay: `${d}ms` }} />
                 ))}
@@ -279,7 +314,7 @@ export default function Chatbot() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKey}
-            placeholder="Describe a contact or opportunity..."
+            placeholder="Ask about your CRM or describe a contact..."
             className="input max-h-32 min-h-[2.5rem] resize-none"
             style={{ fieldSizing: "content" } as React.CSSProperties}
           />

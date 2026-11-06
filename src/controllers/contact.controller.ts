@@ -8,14 +8,16 @@ const idSchema = z.uuid({ error: "Invalid id" });
 const blankToNull = (v: unknown) => (typeof v === "string" && v.trim() === "" ? null : v);
 const optText = z.preprocess(blankToNull, z.string().trim().max(255).nullable().optional());
 
-const createSchema = z.object({
+const baseSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(255),
   email: z.preprocess(blankToNull, z.email().max(255).nullable().optional()),
   phone: optText,
   company: optText,
-  status: z.enum(CONTACT_STATUSES).default("Lead"),
+  status: z.enum(CONTACT_STATUSES),
 });
-const updateSchema = createSchema.partial();
+// Defaults apply on create only; update stays strictly partial (no silent reset of status to Lead).
+const createSchema = baseSchema.extend({ status: baseSchema.shape.status.default("Lead") });
+const updateSchema = baseSchema.partial();
 
 const listSchema = z.object({
   search: z.string().trim().optional(),

@@ -5,13 +5,19 @@ import * as contacts from "@/models/contact.model";
 
 const idSchema = z.uuid({ error: "Invalid id" });
 
-const createSchema = z.object({
+const baseSchema = z.object({
   contact_id: z.uuid({ error: "Invalid contact_id" }),
   title: z.string().trim().min(1, "Title is required").max(255),
-  value_rm: z.coerce.number().min(0, "value_rm must be >= 0").default(0),
-  stage: z.enum(OPPORTUNITY_STAGES).default("New"),
+  value_rm: z.coerce.number().min(0, "value_rm must be >= 0"),
+  stage: z.enum(OPPORTUNITY_STAGES),
 });
-const updateSchema = createSchema.partial();
+// Defaults apply on create only. Update must stay strictly partial: a stage-only PUT (Kanban drag)
+// must not reset value_rm to 0.
+const createSchema = baseSchema.extend({
+  value_rm: baseSchema.shape.value_rm.default(0),
+  stage: baseSchema.shape.stage.default("New"),
+});
+const updateSchema = baseSchema.partial();
 
 const listSchema = z.object({
   contact_id: z.uuid({ error: "Invalid contact_id" }).optional(),

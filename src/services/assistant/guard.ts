@@ -7,7 +7,7 @@ export const MAX_MESSAGE_CHARS = 1000;
 export const MAX_TURNS = 12;
 
 export const REFUSAL_MESSAGE =
-  "I can only help create CRM contacts and opportunities, and I can't act on that request. Tell me about a contact (name plus an email, phone or company) or an opportunity (title, value in RM and the contact) and I'll set it up for you.";
+  "I can only help with this CRM: adding contacts and opportunities, or answering questions about your CRM data, and I can't act on that request. Tell me about a contact (name plus an email, phone or company) or an opportunity (title, value in RM and the contact), or ask something like \"Which prospects haven't been contacted in 2 weeks?\".";
 
 /**
  * Normalise untrusted text: Unicode NFKC (folds full-width / compatibility homoglyphs), strip control chars,

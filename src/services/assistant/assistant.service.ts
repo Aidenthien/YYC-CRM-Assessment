@@ -3,10 +3,13 @@ import * as contactController from "@/controllers/contact.controller";
 import { REFUSAL_MESSAGE, detectInjection, guardMessages, leaksPrompt, parseMoney, sanitizeText } from "./guard";
 import { SYSTEM_PROMPT, TAX_PAGE_PATH } from "./prompts";
 import { extract } from "./extractor";
+import { buildRouterState, routeInput, CONFIDENCE_FLOOR, type Route } from "./router";
+import { runCopilot, COPILOT_EXAMPLES, type CopilotRecord } from "./copilot";
 import { DraftSchema, normalizeStage, normalizeStatus, type Draft, type ProposalView } from "./schema";
 import type { Contact } from "@/types";
 
-export type ChatStatus = "needs_info" | "confirm" | "duplicate" | "info" | "declined";
+export type ChatStatus = "needs_info" | "confirm" | "duplicate" | "info" | "declined" | "answer";
+export type ChatRoute = Route | "clarify";
 export interface ChatResult {
   reply: string;
   status: ChatStatus;
@@ -16,11 +19,16 @@ export interface ChatResult {
   duplicate?: Pick<Contact, "id" | "name" | "email" | "company">;
   candidates?: Pick<Contact, "id" | "name" | "email" | "company">[];
   link?: { href: string; label: string };
+  route?: ChatRoute;
+  // copilot answers only
+  records?: CopilotRecord[];
+  plan?: { entity: string; summary: string; aggregate: string; total_matched: number } | null;
+  truncated?: boolean;
 }
 
 const EXAMPLE_CONTACT = 'Add Sarah Tan, sarah@acme.com, 012-345 6789, Acme Sdn Bhd, Prospect';
 const EXAMPLE_OPP = 'Create an opportunity "Website redesign" worth RM 50,000 for Daniel Lim';
-const CAPABILITIES = `I can add contacts and opportunities for you. Try: "${EXAMPLE_CONTACT}" or "${EXAMPLE_OPP}".`;
+const CAPABILITIES = `I can add contacts and opportunities for you, and answer questions about your CRM data. Try: "${EXAMPLE_CONTACT}", "${EXAMPLE_OPP}" or "${COPILOT_EXAMPLES[0]}".`;
 const emailOk = z.email().max(255);
 const pick = (c: Contact) => ({ id: c.id, name: c.name, email: c.email, company: c.company });
 const lc = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
@@ -57,7 +65,37 @@ export async function converse(rawMessages: unknown, rawDraft: unknown): Promise
     return result({ reply: REFUSAL_MESSAGE, status: "declined" });
   }
 
-  const out = await extract(guard.turns, Object.keys(draftIn).length ? draftIn : undefined);
+  // Router (small LLM) decides what this input is. Deterministic guard above already ran, so blocked input never reaches it.
+  const decision = await routeInput(guard.turns, buildRouterState(guard.turns, draftIn));
+  console.info(`[assistant] route=${decision.route} conf=${decision.confidence} via=${decision.source}`);
+  const withRoute = (r: ChatResult, route: ChatRoute): ChatResult => ({ ...r, route });
+
+  if (decision.source === "llm" && decision.confidence < CONFIDENCE_FLOOR) {
+    return withRoute(result({
+      status: "info", draft: draftIn,
+      reply: `I'm not sure what you'd like. Do you want to add a contact or opportunity, or ask a question about your CRM data (for example "${COPILOT_EXAMPLES[0]}")?`,
+    }), "clarify");
+  }
+  switch (decision.route) {
+    case "injection_attempt":
+      console.warn("[assistant] router: injection_attempt");
+      return withRoute(result({ reply: REFUSAL_MESSAGE, status: "declined" }), "injection_attempt");
+    case "out_of_scope":
+      return withRoute(result({ reply: `That's outside what I can do. ${CAPABILITIES}`, status: "declined", draft: draftIn }), "out_of_scope");
+    case "tax_question":
+      return withRoute(result({ reply: TAX_REPLY, status: "declined", draft: draftIn, link: { href: TAX_PAGE_PATH, label: "Open Tax Assistant" } }), "tax_question");
+    case "copilot": {
+      const c = await runCopilot(guard.turns); // read-only; the automation draft is returned untouched
+      return withRoute(result({ reply: c.answer, status: "answer", draft: draftIn, records: c.records, plan: c.plan, truncated: c.truncated }), "copilot");
+    }
+  }
+  return withRoute(await runAutomation(guard.turns, draftIn), "automation");
+}
+
+const TAX_REPLY = "I can't answer tax questions here, but the Tax Assistant can. Meanwhile I can still add contacts and opportunities, or answer questions about your CRM data.";
+
+async function runAutomation(turns: Parameters<typeof extract>[0], draftIn: Draft): Promise<ChatResult> {
+  const out = await extract(turns, Object.keys(draftIn).length ? draftIn : undefined);
 
   // Defence 3: scope enforcement. Out-of-scope / injection => proposal discarded, fixed polite decline.
   switch (out.intent) {
@@ -68,7 +106,7 @@ export async function converse(rawMessages: unknown, rawDraft: unknown): Promise
       return result({ reply: `That's outside what I can do. ${CAPABILITIES}`, status: "declined", draft: draftIn });
     case "tax_question":
       return result({
-        reply: "I can't answer tax questions here, but the Tax Assistant can. Meanwhile I can still add contacts and opportunities.",
+        reply: TAX_REPLY,
         status: "declined",
         draft: draftIn,
         link: { href: TAX_PAGE_PATH, label: "Open Tax Assistant" },

@@ -10,6 +10,7 @@ export const env = {
   get supabaseKey() { return process.env.SUPABASE_SERVICE_ROLE_KEY || required("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"); },
   get geminiApiKey() { return required("GEMINI_API_KEY"); },
   get chatModel() { return process.env.GEMINI_CHAT_MODEL || "gemini-3.6-flash"; },
+  get routerModel() { return process.env.GEMINI_ROUTER_MODEL || "gemini-3.1-flash-lite"; },
   get embeddingModel() { return process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001"; },
   get embeddingDims() { return Number(process.env.EMBEDDING_DIMENSIONS || 768); },
   get topK() { return Number(process.env.RAG_TOP_K || 6); },

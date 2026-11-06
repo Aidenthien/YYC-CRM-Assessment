@@ -14,9 +14,17 @@ export type Proposal =
 export interface ProposalView { proposal: Proposal; display?: { contact_name?: string; contact_company?: string | null } }
 export type ContactRef = Pick<Contact, "id" | "name" | "email" | "company">;
 
+export type ChatRoute = "automation" | "copilot" | "tax_question" | "out_of_scope" | "injection_attempt" | "clarify";
+export interface CopilotRecord { type: "contact" | "opportunity" | "activity"; id: string; label: string; link: string }
+export interface CopilotPlan { entity: string; summary: string; aggregate: string; total_matched: number }
+
 export interface ChatResponse {
   reply: string;
-  status: "needs_info" | "confirm" | "duplicate" | "info" | "declined";
+  status: "needs_info" | "confirm" | "duplicate" | "info" | "declined" | "answer";
+  route?: ChatRoute;
+  records?: CopilotRecord[];
+  plan?: CopilotPlan | null;
+  truncated?: boolean;
   draft: Record<string, unknown>;
   missing: string[];
   proposal: ProposalView | null;
