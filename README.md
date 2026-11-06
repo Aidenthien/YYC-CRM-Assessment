@@ -5,6 +5,10 @@ A small CRM (contacts, opportunities, activity log, dashboard) built with **Next
 - Docs: [ARCHITECTURE.md](ARCHITECTURE.md) (diagram, data model, RAG design, evaluation, retrospective) · [AI_USAGE.md](AI_USAGE.md)
 - Auth: none. A single hardcoded user ("Sales Rep") is used, as the brief allows.
 
+## Link to access the CRM platform
+
+https://yyc-crm-assessment.vercel.app/
+
 ## Features
 
 | Area | What you get |
